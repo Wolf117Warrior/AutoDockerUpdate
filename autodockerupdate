@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Webhook Discord (à remplir)
+DISCORD_WEBHOOK="https://discordapp.com/api/webhooks/VOTRE_WEBHOOK_URL"
+
+# Fonction pour envoyer une notification à Discord
+send_discord_notification() {
+    local content="$1"
+
+    curl -H "Content-Type: application/json" \
+         -d "{\"content\": \"$content\"}" \
+         "$DISCORD_WEBHOOK"
+}
+
+# Chemin vers les dossiers des conteneurs
+CHEMIN="/votre/dossier/docker-apps/"
+
+# Vérification des arguments
+if [ "$#" -ne 1 ]; then
+    echo "Liste des conteneurs disponibles sur le serveur"
+    echo " "
+    ls -l $CHEMIN
+    sleep 1
+    echo " "
+    echo -e "Quel est le conteneur à mettre à jour ? \c "
+    read var1
+else
+    var1="$1"
+fi
+
+echo "Lancement de la vérification de mise à jour du conteneur"
+
+# Notification de début
+send_discord_notification "🔍 Vérification de mise à jour pour le conteneur **$var1**"
+
+sleep 2
+
+echo " "
+# Déplacement dans le répertoire Docker
+cd "$CHEMIN" || exit
+echo "Accès au répertoire des applis conteneurisées"
+
+sleep 2
+
+echo " "
+# Placement dans le dossier de l'application
+cd "$var1" || exit
+echo "Vous êtes dans le dossier :"
+pwd
+echo " "
+
+sleep 2
+
+# Vérification des mises à jour de l'image docker
+echo "Vérification des mises à jour de l'image docker"
+docker compose pull > pull_output.txt 2>&1
+if grep -q "Pull complete" pull_output.txt; then
+    echo "Mise à jour de l'image disponible"
+    send_discord_notification "🆕 Nouvelle version de l'image Docker pour **$var1** disponible. Début de la mise à jour."
+else
+    echo "L'image est déjà à jour"
+    send_discord_notification "✅ L'image Docker pour **$var1** est déjà à jour. Aucune action nécessaire."
+    rm pull_output.txt
+    exit 0
+fi
+rm pull_output.txt
+
+echo " "
+
+# Mise à jour du container avec la dernière version
+echo "Recréation du conteneur avec la nouvelle image docker"
+if docker compose up -d --remove-orphans; then
+    send_discord_notification "✅ Conteneur **$var1** recréé avec succès"
+else
+    send_discord_notification "❌ Échec de la recréation du conteneur **$var1**"
+    exit 1
+fi
+echo " "
+
+# Suppression des images non utilisées
+echo "Suppression des images docker non utilisées"
+if docker image prune -f; then
+    send_discord_notification "🧹 Nettoyage des images Docker non utilisées effectué"
+else
+    send_discord_notification "⚠️ Problème lors du nettoyage des images Docker non utilisées"
+fi
+
+# Notification de fin
+send_discord_notification "🎉 Mise à jour du conteneur **$var1** terminée avec succès"
+
+echo "Mise à jour terminée"
