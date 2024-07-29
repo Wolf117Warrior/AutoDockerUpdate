@@ -30,8 +30,11 @@ fi
 
 echo "Lancement de la vérification de mise à jour du conteneur"
 
+# Séparateur visuel
+separator="==============="
+
 # Notification de début
-send_discord_notification "🔍 Vérification de mise à jour pour le conteneur **$var1**"
+send_discord_notification "$separator\\n 🔍 Vérification de mise à jour pour le conteneur **$var1**"
 
 sleep 2
 
